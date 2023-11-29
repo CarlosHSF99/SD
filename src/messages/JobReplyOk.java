@@ -1,23 +1,21 @@
 package messages;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-public class JobReplyOk extends Message {
-    private final byte[] output;
+public record JobReplyOk(byte[] output) implements Serializable {
 
-    public JobReplyOk(byte[] output) {
-        super(Type.JOB_REPLY_OK);
-        this.output = output;
-    }
-
-    public byte[] getOutput() {
-        return output;
+    public static JobReplyOk deserialize(DataInputStream in) throws IOException {
+        int outputLength = in.readInt();
+        byte[] output = new byte[outputLength];
+        in.readFully(output);
+        return new JobReplyOk(output);
     }
 
     @Override
     public void serialize(DataOutputStream out) throws IOException {
-        super.serialize(out);
+        Type.JOB_REPLY_OK.serialize(out);
         out.writeInt(output.length);
         out.write(output);
     }
