@@ -14,6 +14,8 @@ public class Server {
         try (var serverSocket = new ServerSocket(1337)) {
             while (true) {
                 var socket = serverSocket.accept();
+                var session = new Session(socket);
+                session.start();
                 var in = new DataInputStream(socket.getInputStream());
                 var out = new DataOutputStream(socket.getOutputStream());
 
