@@ -1,13 +1,14 @@
 package server;
 
-import messages.AuthReply;
-import messages.AuthRequest;
-import messages.Type;
+import messages.*;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+
+import sd23.JobFunction;
+import sd23.JobFunctionException;
 
 public class Session implements Runnable {
     private final Socket socket;
@@ -23,6 +24,20 @@ public class Session implements Runnable {
         try (var in = new DataInputStream(socket.getInputStream());
              var out = new DataOutputStream(socket.getOutputStream())) {
             authenticate(in, out);
+            while (true) {
+                switch (Type.deserialize(in)) {
+                    case JOB_REQUEST -> {
+                        var jobRequest = JobRequest.deserialize(in);
+                        System.out.println("Received job:\n" + new String(jobRequest.code()));
+                        try {
+                            new JobReplyOk(JobFunction.execute(jobRequest.code())).serialize(out);
+                        } catch (JobFunctionException e) {
+                            new JobReplyError(e.getCode(), e.getMessage()).serialize(out);
+                        }
+                    }
+                    default -> System.out.println("Received unknown message type");
+                }
+            }
         } catch (IOException e) {
             // throw new RuntimeException(e);
             System.out.println("Failed to authenticate.");
