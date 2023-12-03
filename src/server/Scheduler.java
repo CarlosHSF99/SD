@@ -21,9 +21,9 @@ public class Scheduler {
         this.memoryCapacity = memoryCapacity;
     }
 
-    public Optional<byte[]> addJob(byte[] job) throws InterruptedException, JobFunctionException {
+    public byte[] addJob(byte[] job) throws InterruptedException, JobFunctionException, JobTooBigException {
         if (job.length > memoryCapacity) {
-            return Optional.empty();
+            throw new JobTooBigException();
         }
 
         lock.lock();
@@ -41,7 +41,7 @@ public class Scheduler {
         }
 
         try {
-            return Optional.of(JobFunction.execute(job));
+            return JobFunction.execute(job);
         } finally {
             lock.lock();
             try {

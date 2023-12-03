@@ -46,10 +46,8 @@ public class Session implements Runnable {
             }
 
             var login = AuthRequest.deserialize(in);
-            var username = login.username();
-            var password = login.password();
 
-            if (auth.authenticate(username, password)) {
+            if (auth.authenticate(login.username(), login.password())) {
                 break;
             } else {
                 new AuthReply(false).serialize(out);
@@ -59,22 +57,10 @@ public class Session implements Runnable {
     }
 
     private void job(DataInputStream in, DataOutputStream out) throws IOException, InterruptedException {
-        var jobRequest = JobRequest.deserialize(in);
-        System.out.println("Received job:\n" + new String(jobRequest.code()));
         try {
-            scheduler.addJob(jobRequest.code()).ifPresentOrElse(jobReply -> {
-                try {
-                    new JobReplyOk(jobReply).serialize(out);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }, () -> {
-                try {
-                    new JobReplyError(0, "Not enough memory").serialize(out);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
+            new JobReplyOk(scheduler.addJob(JobRequest.deserialize(in).code())).serialize(out);
+        } catch (JobTooBigException e) {
+            new JobReplyError(0, "Not enough memory").serialize(out);
         } catch (JobFunctionException e) {
             new JobReplyError(e.getCode(), e.getMessage()).serialize(out);
         }
