@@ -1,6 +1,8 @@
 package client;
 
-import messages.*;
+import connection.messages.*;
+import connection.utils.Message;
+import connection.utils.Type;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -30,7 +32,6 @@ public class Client {
                 });
             }
         } catch (IOException | NoSuchElementException e) {
-            // throw new RuntimeException(e);
             System.out.println("Connection ended.");
         }
     }
@@ -44,13 +45,12 @@ public class Client {
             System.out.print("Enter password: ");
             var password = scanner.nextLine();
 
-            new AuthRequest(username, password).serialize(out);
+            new Message(new AuthRequest(username, password)).send(out);
 
-            while (Type.deserialize(in) != Type.AUTH_REPLY) {
-                in.readAllBytes();
-            }
+            Message message;
+            while ((message = Message.receive(in)).type() != Type.AUTH_REPLY);
+            var authReply = (AuthReply) message.payload();
 
-            var authReply = AuthReply.deserialize(in);
             if (authReply.success()) {
                 System.out.println("Login successful.");
                 break;
@@ -67,24 +67,23 @@ public class Client {
 
         switch (tokens[0]) {
             case "exec" -> {
-                var job = Files.readAllBytes(Path.of(tokens[1]));
-                new JobRequest(job).serialize(out);
+                new Message(new JobRequest(Files.readAllBytes(Path.of(tokens[1])))).send(out);
             }
             default -> System.out.println("Unknown command");
         }
     }
 
     private static void receive(DataInputStream in) throws IOException {
-        switch (Type.deserialize(in)) {
+        var message = Message.receive(in);
+        switch (message.type()) {
             case JOB_REPLY_OK -> {
-                var jobReplyOk = JobReplyOk.deserialize(in);
-                var fileOut = "here.txt";
-                try (var fos = new FileOutputStream(fileOut)) {
-                    fos.write(jobReplyOk.output());
+                System.out.println("Job finished successfully.");
+                try (var fos = new FileOutputStream("out.txt")) {
+                    fos.write(((JobReplyOk) message.payload()).output());
                 }
             }
             case JOB_REPLY_ERROR -> {
-                var jobReplyError = JobReplyError.deserialize(in);
+                var jobReplyError = (JobReplyError) message.payload();
                 System.out.println("Job failed.\n\tCode: " + jobReplyError.code() + "\n\tMessage: " + jobReplyError.message());
             }
             default -> System.out.println("Received unknown message type");

@@ -1,6 +1,9 @@
 package server;
 
-import messages.*;
+import connection.messages.*;
+import connection.utils.Message;
+import connection.utils.Payload;
+import connection.utils.Type;
 import sd23.JobFunctionException;
 
 import java.io.DataInputStream;
@@ -26,13 +29,14 @@ public class Session implements Runnable {
             authenticate(in, out);
 
             while (true) {
-                switch (Type.deserialize(in)) {
-                    case JOB_REQUEST -> job(in, out);
+                var message = Message.receive(in);
+
+                switch (message.type()) {
+                    case JOB_REQUEST -> new Message(runJob((JobRequest) message.payload())).send(out);
                     default -> System.out.println("Received unknown message type");
                 }
             }
         } catch (IOException e) {
-            // throw new RuntimeException(e);
             System.out.println("Connection ended.");
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
@@ -41,28 +45,27 @@ public class Session implements Runnable {
 
     private void authenticate(DataInputStream in, DataOutputStream out) throws IOException {
         while (true) {
-            while (Type.deserialize(in) != Type.AUTH_REQUEST) {
-                in.readAllBytes(); // this seems problematic
-            }
+            Message message;
+            while ((message = Message.receive(in)).type() != Type.AUTH_REQUEST);
+            var authRequest = (AuthRequest) message.payload();
 
-            var login = AuthRequest.deserialize(in);
-
-            if (auth.authenticate(login.username(), login.password())) {
+            if (auth.authenticate(authRequest.username(), authRequest.password())) {
                 break;
             } else {
-                new AuthReply(false).serialize(out);
+                new Message(new AuthReply(false)).send(out);
             }
         }
-        new AuthReply(true).serialize(out);
+        new Message(new AuthReply(true)).send(out);
     }
 
-    private void job(DataInputStream in, DataOutputStream out) throws IOException, InterruptedException {
+    private Payload runJob(JobRequest jobRequest) throws IOException, InterruptedException {
+        System.out.println("Running job");
         try {
-            new JobReplyOk(scheduler.addJob(JobRequest.deserialize(in).code())).serialize(out);
+            return new JobReplyOk(scheduler.addJob(jobRequest.code()));
         } catch (JobTooBigException e) {
-            new JobReplyError(0, "Not enough memory").serialize(out);
+            return new JobReplyError(0, "Not enough memory");
         } catch (JobFunctionException e) {
-            new JobReplyError(e.getCode(), e.getMessage()).serialize(out);
+            return new JobReplyError(e.getCode(), e.getMessage());
         }
     }
 }
