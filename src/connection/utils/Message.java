@@ -1,5 +1,5 @@
 package connection.utils;
 
 public interface Message extends Serializable {
-    Type getType();
+    Type type();
 }

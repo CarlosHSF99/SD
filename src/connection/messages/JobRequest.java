@@ -17,7 +17,7 @@ public record JobRequest(byte[] code) implements Message {
     }
 
     @Override
-    public Type getType() {
+    public Type type() {
         return Type.JOB_REQUEST;
     }
 

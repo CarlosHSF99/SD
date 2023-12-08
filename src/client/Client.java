@@ -5,8 +5,6 @@ import connection.utils.Connection;
 import connection.utils.Message;
 import connection.utils.Type;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.Socket;
@@ -17,16 +15,14 @@ import java.util.Scanner;
 
 public class Client {
     public static void main(String[] args) {
-        try (var socket = new Socket("localhost", 1337);
-             var in = new DataInputStream(socket.getInputStream());
-             var out = new DataOutputStream(socket.getOutputStream())) {
-            authenticate(in, out);
+        try (var connection = new Connection(new Socket("localhost", 1337))) {
+            authenticate(connection);
 
             while (true) {
-                send(out);
+                send(connection);
                 Thread.startVirtualThread(() -> {
                     try {
-                        receive(in);
+                        receive(connection);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
@@ -34,10 +30,12 @@ public class Client {
             }
         } catch (IOException | NoSuchElementException e) {
             System.out.println("Connection ended.");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
-    private static void authenticate(DataInputStream in, DataOutputStream out) throws IOException, NoSuchElementException {
+    private static void authenticate(Connection connection) throws IOException, NoSuchElementException {
         var scanner = new Scanner(System.in);
 
         while (true) {
@@ -46,10 +44,10 @@ public class Client {
             System.out.print("Enter password: ");
             var password = scanner.nextLine();
 
-            new Connection(new AuthRequest(username, password)).send(out);
+            connection.send(new AuthRequest(username, password));
 
             Message message;
-            while ((message = Connection.receive(in)).getType() != Type.AUTH_REPLY);
+            while ((message = connection.receive()).type() != Type.AUTH_REPLY);
             var authReply = (AuthReply) message;
 
             if (authReply.success()) {
@@ -61,22 +59,22 @@ public class Client {
         }
     }
 
-    private static void send(DataOutputStream out) throws IOException {
+    private static void send(Connection connection) throws IOException {
         var scanner = new Scanner(System.in);
         var line = scanner.nextLine();
         var tokens = line.split(" ");
 
         switch (tokens[0]) {
             case "exec" -> {
-                new Connection(new JobRequest(Files.readAllBytes(Path.of(tokens[1])))).send(out);
+                connection.send(new JobRequest(Files.readAllBytes(Path.of(tokens[1]))));
             }
             default -> System.out.println("Unknown command");
         }
     }
 
-    private static void receive(DataInputStream in) throws IOException {
-        var message = Connection.receive(in);
-        switch (message.getType()) {
+    private static void receive(Connection connection) throws IOException {
+        var message = connection.receive();
+        switch (message.type()) {
             case JOB_REPLY_OK -> {
                 System.out.println("Job finished successfully.");
                 try (var fos = new FileOutputStream("out.txt")) {

@@ -14,7 +14,7 @@ public record StatusRequest() implements Message {
     }
 
     @Override
-    public Type getType() {
+    public Type type() {
         return Type.STATUS_REQUEST;
     }
 

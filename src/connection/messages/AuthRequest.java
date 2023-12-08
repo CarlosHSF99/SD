@@ -16,7 +16,7 @@ public record AuthRequest(String username, String password) implements Message {
     }
 
     @Override
-    public Type getType() {
+    public Type type() {
         return Type.AUTH_REQUEST;
     }
 

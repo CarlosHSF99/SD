@@ -16,7 +16,7 @@ public record StatusReply(int availableMemory, int pendingTasks) implements Mess
     }
 
     @Override
-    public Type getType() {
+    public Type type() {
         return Type.STATUS_REPLY;
     }
 

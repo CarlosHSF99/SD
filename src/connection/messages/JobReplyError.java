@@ -16,7 +16,7 @@ public record JobReplyError(int code, String message) implements Message {
     }
 
     @Override
-    public Type getType() {
+    public Type type() {
         return Type.JOB_REPLY_ERROR;
     }
 

@@ -17,7 +17,7 @@ public record JobReplyOk(byte[] output) implements Message {
     }
 
     @Override
-    public Type getType() {
+    public Type type() {
         return Type.JOB_REPLY_OK;
     }
 
