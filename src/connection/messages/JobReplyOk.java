@@ -1,13 +1,13 @@
 package connection.messages;
 
-import connection.utils.Payload;
+import connection.utils.Message;
 import connection.utils.Type;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-public record JobReplyOk(byte[] output) implements Payload {
+public record JobReplyOk(byte[] output) implements Message {
 
     public static JobReplyOk deserialize(DataInputStream in) throws IOException {
         int outputLength = in.readInt();

@@ -1,6 +1,7 @@
 package client;
 
 import connection.messages.*;
+import connection.utils.Connection;
 import connection.utils.Message;
 import connection.utils.Type;
 
@@ -45,11 +46,11 @@ public class Client {
             System.out.print("Enter password: ");
             var password = scanner.nextLine();
 
-            new Message(new AuthRequest(username, password)).send(out);
+            new Connection(new AuthRequest(username, password)).send(out);
 
             Message message;
-            while ((message = Message.receive(in)).type() != Type.AUTH_REPLY);
-            var authReply = (AuthReply) message.payload();
+            while ((message = Connection.receive(in)).getType() != Type.AUTH_REPLY);
+            var authReply = (AuthReply) message;
 
             if (authReply.success()) {
                 System.out.println("Login successful.");
@@ -67,23 +68,23 @@ public class Client {
 
         switch (tokens[0]) {
             case "exec" -> {
-                new Message(new JobRequest(Files.readAllBytes(Path.of(tokens[1])))).send(out);
+                new Connection(new JobRequest(Files.readAllBytes(Path.of(tokens[1])))).send(out);
             }
             default -> System.out.println("Unknown command");
         }
     }
 
     private static void receive(DataInputStream in) throws IOException {
-        var message = Message.receive(in);
-        switch (message.type()) {
+        var message = Connection.receive(in);
+        switch (message.getType()) {
             case JOB_REPLY_OK -> {
                 System.out.println("Job finished successfully.");
                 try (var fos = new FileOutputStream("out.txt")) {
-                    fos.write(((JobReplyOk) message.payload()).output());
+                    fos.write(((JobReplyOk) message).output());
                 }
             }
             case JOB_REPLY_ERROR -> {
-                var jobReplyError = (JobReplyError) message.payload();
+                var jobReplyError = (JobReplyError) message;
                 System.out.println("Job failed.\n\tCode: " + jobReplyError.code() + "\n\tMessage: " + jobReplyError.message());
             }
             default -> System.out.println("Received unknown message type");

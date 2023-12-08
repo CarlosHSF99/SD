@@ -1,13 +1,13 @@
 package connection.messages;
 
-import connection.utils.Payload;
+import connection.utils.Message;
 import connection.utils.Type;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-public record AuthRequest(String username, String password) implements Payload {
+public record AuthRequest(String username, String password) implements Message {
 
     public static AuthRequest deserialize(DataInputStream in) throws IOException {
         String username = in.readUTF();

@@ -1,13 +1,13 @@
 package connection.messages;
 
-import connection.utils.Payload;
+import connection.utils.Message;
 import connection.utils.Type;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-public record AuthReply(boolean success) implements Payload {
+public record AuthReply(boolean success) implements Message {
 
     public static AuthReply deserialize(DataInputStream in) throws IOException {
         boolean success = in.readBoolean();

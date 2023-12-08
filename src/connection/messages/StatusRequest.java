@@ -1,13 +1,13 @@
 package connection.messages;
 
-import connection.utils.Payload;
+import connection.utils.Message;
 import connection.utils.Type;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-public record StatusRequest() implements Payload {
+public record StatusRequest() implements Message {
 
     public static StatusRequest deserialize(DataInputStream in) throws IOException {
         return new StatusRequest();

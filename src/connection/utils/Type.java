@@ -58,5 +58,5 @@ public enum Type implements Serializable {
         return Type.values()[in.readChar()];
     }
 
-    public abstract Payload deserializePayload(DataInputStream in) throws IOException;
+    public abstract Message deserializePayload(DataInputStream in) throws IOException;
 }

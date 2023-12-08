@@ -1,13 +1,13 @@
 package connection.messages;
 
-import connection.utils.Payload;
+import connection.utils.Message;
 import connection.utils.Type;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-public record StatusReply(int availableMemory, int pendingTasks) implements Payload {
+public record StatusReply(int availableMemory, int pendingTasks) implements Message {
 
     public static StatusReply deserialize(DataInputStream in) throws IOException {
         int availableMemory = in.readInt();
