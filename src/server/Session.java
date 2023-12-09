@@ -1,5 +1,6 @@
 package server;
 
+import concurrentUtils.BoundedBuffer;
 import connection.messages.*;
 import connection.utils.Connection;
 import connection.utils.Message;
@@ -13,11 +14,13 @@ public class Session implements Runnable {
     private final Socket socket;
     private final Auth auth;
     private final Scheduler scheduler;
+    private final BoundedBuffer<Runnable> boundedBuffer;
 
-    public Session(Socket socket, Auth auth, Scheduler scheduler) {
+    public Session(Socket socket, BoundedBuffer<Runnable> boundedBuffer, Auth auth, Scheduler scheduler) {
         this.socket = socket;
         this.auth = auth;
         this.scheduler = scheduler;
+        this.boundedBuffer = boundedBuffer;
     }
 
     @Override
@@ -28,24 +31,28 @@ public class Session implements Runnable {
             while (true) {
                 var message = connection.receive();
 
-                switch (message.type()) {
-                    case JOB_REQUEST -> connection.send(runJob((JobRequest) message));
-                    default -> System.out.println("Received unknown message type");
-                }
+                boundedBuffer.put(() -> {
+                    try {
+                        switch (message.type()) {
+                            case JOB_REQUEST -> connection.send(runJob((JobRequest) message));
+                            default -> System.out.println("Received unknown message type");
+                        }
+                    } catch (IOException | InterruptedException e) {
+                        var exceptionMessage = e.getMessage();
+                        System.out.println("Error processing request" + (exceptionMessage != null ? ": " + exceptionMessage : "."));
+                    }
+                });
             }
-        } catch (IOException e) {
-            System.out.println("Connection ended.");
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            var exceptionMessage = e.getMessage();
+            System.out.println("Connection ended" + (exceptionMessage != null ? " with error: " + exceptionMessage : "."));
         }
     }
 
     private void authenticate(Connection connection) throws IOException {
         while (true) {
             Message message;
-            while ((message = connection.receive()).type() != Type.AUTH_REQUEST);
+            while ((message = connection.receive()).type() != Type.AUTH_REQUEST) ;
             var authRequest = (AuthRequest) message;
 
             if (auth.authenticate(authRequest.username(), authRequest.password())) {
@@ -57,7 +64,7 @@ public class Session implements Runnable {
         connection.send(new AuthReply(true));
     }
 
-    private Message runJob(JobRequest jobRequest) throws IOException, InterruptedException {
+    private Message runJob(JobRequest jobRequest) throws InterruptedException {
         System.out.println("Running job");
         try {
             return new JobReplyOk(scheduler.addJob(jobRequest.code()));
