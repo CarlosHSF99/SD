@@ -14,13 +14,13 @@ public class Session implements Runnable {
     private final Socket socket;
     private final Auth auth;
     private final Scheduler scheduler;
-    private final BoundedBuffer<Runnable> boundedBuffer;
+    private final BoundedBuffer<Runnable> taskBuffer;
 
-    public Session(Socket socket, BoundedBuffer<Runnable> boundedBuffer, Auth auth, Scheduler scheduler) {
+    public Session(Socket socket, BoundedBuffer<Runnable> taskBuffer, Auth auth, Scheduler scheduler) {
         this.socket = socket;
         this.auth = auth;
         this.scheduler = scheduler;
-        this.boundedBuffer = boundedBuffer;
+        this.taskBuffer = taskBuffer;
     }
 
     @Override
@@ -31,7 +31,7 @@ public class Session implements Runnable {
             while (true) {
                 var message = connection.receive();
 
-                boundedBuffer.put(() -> {
+                taskBuffer.put(() -> {
                     try {
                         switch (message.type()) {
                             case JOB_REQUEST -> connection.send(runJob((JobRequest) message));
@@ -43,7 +43,7 @@ public class Session implements Runnable {
                     }
                 });
             }
-        } catch (Exception e) {
+        } catch (IOException | InterruptedException e) {
             var exceptionMessage = e.getMessage();
             System.out.println("Connection ended" + (exceptionMessage != null ? " with error: " + exceptionMessage : "."));
         }
