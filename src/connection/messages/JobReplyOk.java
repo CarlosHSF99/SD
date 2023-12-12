@@ -23,6 +23,7 @@ public record JobReplyOk(byte[] output) implements Message {
 
     @Override
     public void serialize(DataOutputStream out) throws IOException {
+        Message.super.serialize(out);
         out.writeInt(output.length);
         out.write(output);
     }
