@@ -22,12 +22,14 @@ public class Client {
 
             var scanner = new Scanner(System.in);
             while (true) {
-                var tag = send(connection, scanner.nextLine());
+                var line = scanner.nextLine();
                 Thread.startVirtualThread(() -> {
                     try {
+                        var tag = send(connection, line);
                         handleMessage(connection.receive(tag));
                     } catch (InterruptedException | IOException e) {
                         System.out.println("Error receiving message");
+                    } catch (IllegalArgumentException ignored) {
                     }
                 });
             }
@@ -61,7 +63,7 @@ public class Client {
         }
     }
 
-    private static int send(MultiplexedConnection connection, String line) throws IOException {
+    private static int send(MultiplexedConnection connection, String line) throws IOException, IllegalArgumentException {
         var tokens = line.split(" ");
 
         switch (tokens[0]) {
@@ -70,7 +72,7 @@ public class Client {
             }
             default -> {
                 System.out.println("Unknown command");
-                throw new IOException();
+                throw new IllegalArgumentException(tokens[0]);
             }
         }
     }
