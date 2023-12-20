@@ -22,6 +22,7 @@ public record StatusReply(int availableMemory, int pendingTasks) implements Mess
 
     @Override
     public void serialize(DataOutputStream out) throws IOException {
+        Message.super.serialize(out);
         out.writeInt(availableMemory);
         out.writeInt(pendingTasks);
     }

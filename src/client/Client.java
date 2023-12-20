@@ -1,11 +1,9 @@
 package client;
 
-import concurrentUtils.BoundedBuffer;
 import connection.messages.*;
-import connection.utils.Connection;
+import connection.multiplexer.MultiplexedConnection;
 import connection.utils.Message;
 import connection.utils.Type;
-import server.ClientReader;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -18,32 +16,30 @@ import java.util.Scanner;
 public class Client {
 
     public static void main(String[] args) {
-        var replyBuffer = new BoundedBuffer<Message>(128);
-
-        try (var connection = new Connection(new Socket("localhost", 1337))) {
+        try (var connection = new MultiplexedConnection(new Socket("localhost", 1337))) {
+            new Thread(connection).start();
             authenticate(connection);
-
-            var clientReader = new Thread(new ClientReader(connection, replyBuffer));
-            clientReader.start();
 
             var scanner = new Scanner(System.in);
             while (true) {
-                send(connection, scanner.nextLine());
+                var line = scanner.nextLine();
                 Thread.startVirtualThread(() -> {
                     try {
-                        handleMessage(replyBuffer.get());
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
+                        var tag = send(connection, line);
+                        handleMessage(connection.receive(tag));
+                    } catch (InterruptedException | IOException e) {
+                        System.out.println("Error receiving message");
+                    } catch (IllegalArgumentException ignored) {
                     }
                 });
             }
-        } catch (IOException | NoSuchElementException e) {
+        } catch (IOException | NoSuchElementException | InterruptedException e) {
             var exceptionMessage = e.getMessage();
             System.out.println("Connection ended" + (exceptionMessage != null ? " with error: " + exceptionMessage : "."));
         }
     }
 
-    private static void authenticate(Connection connection) throws IOException, NoSuchElementException {
+    private static void authenticate(MultiplexedConnection connection) throws IOException, NoSuchElementException, InterruptedException {
         var scanner = new Scanner(System.in);
 
         while (true) {
@@ -52,10 +48,10 @@ public class Client {
             System.out.print("Enter password: ");
             var password = scanner.nextLine();
 
-            connection.send(new AuthRequest(username, password));
+            var tag = connection.send(new AuthRequest(username, password));
 
             Message message;
-            while ((message = connection.receive()).type() != Type.AUTH_REPLY) ;
+            while ((message = connection.receive(tag)).type() != Type.AUTH_REPLY) ;
             var authReply = (AuthReply) message;
 
             if (authReply.success()) {
@@ -67,14 +63,17 @@ public class Client {
         }
     }
 
-    private static void send(Connection connection, String line) throws IOException {
+    private static int send(MultiplexedConnection connection, String line) throws IOException, IllegalArgumentException {
         var tokens = line.split(" ");
 
         switch (tokens[0]) {
             case "exec" -> {
-                connection.send(new JobRequest(Files.readAllBytes(Path.of(tokens[1]))));
+                return connection.send(new JobRequest(Files.readAllBytes(Path.of(tokens[1]))));
             }
-            default -> System.out.println("Unknown command");
+            default -> {
+                System.out.println("Unknown command");
+                throw new IllegalArgumentException(tokens[0]);
+            }
         }
     }
 

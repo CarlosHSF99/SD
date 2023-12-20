@@ -23,6 +23,7 @@ public record JobRequest(byte[] code) implements Message {
 
     @Override
     public void serialize(DataOutputStream out) throws IOException {
+        Message.super.serialize(out);
         out.writeInt(code.length);
         out.write(code);
     }

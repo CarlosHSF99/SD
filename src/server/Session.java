@@ -2,9 +2,9 @@ package server;
 
 import concurrentUtils.BoundedBuffer;
 import connection.messages.*;
-import connection.utils.Connection;
-import connection.utils.Message;
-import connection.utils.Type;
+import connection.multiplexer.Frame;
+import connection.multiplexer.TaggedConnection;
+import connection.utils.*;
 import sd23.JobFunctionException;
 
 import java.io.IOException;
@@ -25,16 +25,17 @@ public class Session implements Runnable {
 
     @Override
     public void run() {
-        try (var connection = new Connection(socket)) {
+        try (var connection = new TaggedConnection(socket)) {
             authenticate(connection);
 
             while (true) {
-                var message = connection.receive();
+                var frame = connection.receive();
+                var message = frame.message();
 
                 taskBuffer.put(() -> {
                     try {
                         switch (message.type()) {
-                            case JOB_REQUEST -> connection.send(runJob((JobRequest) message));
+                            case JOB_REQUEST -> connection.send(frame.tag(), runJob((JobRequest) message));
                             default -> System.out.println("Received unknown message type");
                         }
                     } catch (IOException | InterruptedException e) {
@@ -49,19 +50,19 @@ public class Session implements Runnable {
         }
     }
 
-    private void authenticate(Connection connection) throws IOException {
+    private void authenticate(TaggedConnection connection) throws IOException {
+        Frame frame;
         while (true) {
-            Message message;
-            while ((message = connection.receive()).type() != Type.AUTH_REQUEST) ;
-            var authRequest = (AuthRequest) message;
+            while ((frame = connection.receive()).message().type() != Type.AUTH_REQUEST) ;
+            var authRequest = (AuthRequest) frame.message();
 
             if (auth.authenticate(authRequest.username(), authRequest.password())) {
                 break;
             } else {
-                connection.send(new AuthReply(false));
+                connection.send(frame.tag(), new AuthReply(false));
             }
         }
-        connection.send(new AuthReply(true));
+        connection.send(frame.tag(), new AuthReply(true));
     }
 
     private Message runJob(JobRequest jobRequest) throws InterruptedException {
