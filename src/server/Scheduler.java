@@ -3,7 +3,6 @@ package server;
 import sd23.JobFunction;
 import sd23.JobFunctionException;
 
-import java.util.Optional;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -12,8 +11,8 @@ public class Scheduler {
     private final int memoryCapacity;
     private final Lock lock = new ReentrantLock();
     private final Condition cond = lock.newCondition();
-    private long turn = 0;
-    private long nextTicket = 0;
+    private long turn = Long.MIN_VALUE;
+    private long nextTicket = Long.MIN_VALUE;
     private int memoryInUse = 0;
     private int pendingJobs = 0;
 
@@ -30,7 +29,6 @@ public class Scheduler {
         try {
             var ticket = nextTicket++;
             while (memoryInUse + job.length > memoryCapacity || ticket > turn) {
-                System.out.println("suspend: " + Thread.currentThread().threadId());
                 cond.await();
             }
             turn++;
@@ -55,17 +53,18 @@ public class Scheduler {
     }
 
     public int getPendingJobs() {
+        lock.lock();
         try {
-            lock.lock();
             return pendingJobs;
         } finally {
             lock.unlock();
         }
     }
 
-    public int getMemoryInUse() {
+    public int getAvailableMemory() {
+        lock.lock();
         try {
-            return memoryInUse;
+            return memoryCapacity - memoryInUse;
         } finally {
             lock.unlock();
         }
