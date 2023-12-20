@@ -1,5 +1,6 @@
 package server;
 
+import connection.messages.JobRequest;
 import sd23.JobFunction;
 import sd23.JobFunctionException;
 
@@ -20,30 +21,30 @@ public class Scheduler {
         this.memoryCapacity = memoryCapacity;
     }
 
-    public byte[] addJob(byte[] job) throws InterruptedException, JobFunctionException, JobTooBigException {
-        if (job.length > memoryCapacity) {
+    public byte[] addJob(JobRequest job) throws InterruptedException, JobFunctionException, JobTooBigException {
+        if (job.memory() > memoryCapacity) {
             throw new JobTooBigException();
         }
 
         lock.lock();
         try {
             var ticket = nextTicket++;
-            while (memoryInUse + job.length > memoryCapacity || ticket > turn) {
+            while (memoryInUse + job.memory() > memoryCapacity || ticket > turn) {
                 cond.await();
             }
             turn++;
-            memoryInUse += job.length;
+            memoryInUse += job.memory();
             pendingJobs++;
         } finally {
             lock.unlock();
         }
 
         try {
-            return JobFunction.execute(job);
+            return JobFunction.execute(job.code());
         } finally {
             lock.lock();
             try {
-                memoryInUse -= job.length;
+                memoryInUse -= job.memory();
                 pendingJobs--;
                 cond.signalAll();
             } finally {

@@ -68,7 +68,7 @@ public class Client {
 
         switch (tokens[0]) {
             case "exec" -> {
-                return connection.send(new JobRequest(Files.readAllBytes(Path.of(tokens[1]))));
+                return connection.send(new JobRequest(Files.readAllBytes(Path.of(tokens[1])), Integer.parseInt(tokens[2])));
             }
             default -> {
                 System.out.println("Unknown command");
