@@ -39,6 +39,7 @@ public class MultiplexedConnection implements Runnable, AutoCloseable {
         return messageMultiplexer.get(tag);
     }
 
+    @Override
     public void close() throws IOException {
         connection.close();
     }

@@ -45,6 +45,7 @@ public class TaggedConnection implements AutoCloseable {
         }
     }
 
+    @Override
     public void close() throws IOException {
         inputStream.close();
         outputStream.close();
