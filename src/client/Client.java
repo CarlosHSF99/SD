@@ -70,6 +70,9 @@ public class Client {
             case "exec" -> {
                 return connection.send(new JobRequest(Files.readAllBytes(Path.of(tokens[1]))));
             }
+            case "status" -> {
+                return connection.send(new StatusRequest());
+            }
             default -> {
                 System.out.println("Unknown command");
                 throw new IllegalArgumentException(tokens[0]);
@@ -90,6 +93,10 @@ public class Client {
             case JOB_REPLY_ERROR -> {
                 var jobReplyError = (JobReplyError) message;
                 System.out.println("Job failed.\n\tCode: " + jobReplyError.code() + "\n\tMessage: " + jobReplyError.message());
+            }
+            case STATUS_REPLY -> {
+                var statusReply = (StatusReply) message;
+                System.out.println("Status:\n\tAvailable memory: " + statusReply.availableMemory() + "\n\tNumber of pending tasks: " + statusReply.pendingJobs());
             }
             default -> System.out.println("Received unknown message type");
         }

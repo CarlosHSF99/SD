@@ -36,6 +36,7 @@ public class Session implements Runnable {
                     try {
                         switch (message.type()) {
                             case JOB_REQUEST -> connection.send(frame.tag(), runJob((JobRequest) message));
+                            case STATUS_REQUEST -> connection.send(frame.tag(), new StatusReply(scheduler.getAvailableMemory(), scheduler.getPendingJobs()));
                             default -> System.out.println("Received unknown message type");
                         }
                     } catch (IOException | InterruptedException e) {
