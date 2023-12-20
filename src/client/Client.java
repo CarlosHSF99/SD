@@ -1,9 +1,11 @@
 package client;
 
+import concurrentUtils.BoundedBuffer;
 import connection.messages.*;
 import connection.utils.Connection;
 import connection.utils.Message;
 import connection.utils.Type;
+import server.ClientReader;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -14,24 +16,30 @@ import java.util.NoSuchElementException;
 import java.util.Scanner;
 
 public class Client {
+
     public static void main(String[] args) {
+        var replyBuffer = new BoundedBuffer<Message>(128);
+
         try (var connection = new Connection(new Socket("localhost", 1337))) {
             authenticate(connection);
 
+            var clientReader = new Thread(new ClientReader(connection, replyBuffer));
+            clientReader.start();
+
+            var scanner = new Scanner(System.in);
             while (true) {
-                send(connection);
+                send(connection, scanner.nextLine());
                 Thread.startVirtualThread(() -> {
                     try {
-                        receive(connection);
-                    } catch (IOException e) {
+                        handleMessage(replyBuffer.get());
+                    } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }
                 });
             }
         } catch (IOException | NoSuchElementException e) {
-            System.out.println("Connection ended.");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+            var exceptionMessage = e.getMessage();
+            System.out.println("Connection ended" + (exceptionMessage != null ? " with error: " + exceptionMessage : "."));
         }
     }
 
@@ -47,7 +55,7 @@ public class Client {
             connection.send(new AuthRequest(username, password));
 
             Message message;
-            while ((message = connection.receive()).type() != Type.AUTH_REPLY);
+            while ((message = connection.receive()).type() != Type.AUTH_REPLY) ;
             var authReply = (AuthReply) message;
 
             if (authReply.success()) {
@@ -59,9 +67,7 @@ public class Client {
         }
     }
 
-    private static void send(Connection connection) throws IOException {
-        var scanner = new Scanner(System.in);
-        var line = scanner.nextLine();
+    private static void send(Connection connection, String line) throws IOException {
         var tokens = line.split(" ");
 
         switch (tokens[0]) {
@@ -72,13 +78,14 @@ public class Client {
         }
     }
 
-    private static void receive(Connection connection) throws IOException {
-        var message = connection.receive();
+    private static void handleMessage(Message message) {
         switch (message.type()) {
             case JOB_REPLY_OK -> {
                 System.out.println("Job finished successfully.");
                 try (var fos = new FileOutputStream("out.txt")) {
                     fos.write(((JobReplyOk) message).output());
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
             }
             case JOB_REPLY_ERROR -> {
