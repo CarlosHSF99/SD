@@ -1,10 +1,13 @@
-package messages;
+package connection.messages;
+
+import connection.utils.Message;
+import connection.utils.Type;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-public record AuthRequest(String username, String password) implements Serializable {
+public record AuthRequest(String username, String password) implements Message {
 
     public static AuthRequest deserialize(DataInputStream in) throws IOException {
         String username = in.readUTF();
@@ -13,8 +16,12 @@ public record AuthRequest(String username, String password) implements Serializa
     }
 
     @Override
+    public Type type() {
+        return Type.AUTH_REQUEST;
+    }
+
+    @Override
     public void serialize(DataOutputStream out) throws IOException {
-        Type.AUTH_REQUEST.serialize(out);
         out.writeUTF(username);
         out.writeUTF(password);
     }

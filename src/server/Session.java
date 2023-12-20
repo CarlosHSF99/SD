@@ -1,10 +1,11 @@
 package server;
 
-import messages.*;
+import connection.messages.*;
+import connection.utils.Connection;
+import connection.utils.Message;
+import connection.utils.Type;
 import sd23.JobFunctionException;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 
@@ -21,48 +22,49 @@ public class Session implements Runnable {
 
     @Override
     public void run() {
-        try (var in = new DataInputStream(socket.getInputStream());
-             var out = new DataOutputStream(socket.getOutputStream())) {
-            authenticate(in, out);
+        try (var connection = new Connection(socket)) {
+            authenticate(connection);
 
             while (true) {
-                switch (Type.deserialize(in)) {
-                    case JOB_REQUEST -> job(in, out);
+                var message = connection.receive();
+
+                switch (message.type()) {
+                    case JOB_REQUEST -> connection.send(runJob((JobRequest) message));
                     default -> System.out.println("Received unknown message type");
                 }
             }
         } catch (IOException e) {
-            // throw new RuntimeException(e);
             System.out.println("Connection ended.");
         } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    private void authenticate(DataInputStream in, DataOutputStream out) throws IOException {
+    private void authenticate(Connection connection) throws IOException {
         while (true) {
-            while (Type.deserialize(in) != Type.AUTH_REQUEST) {
-                in.readAllBytes(); // this seems problematic
-            }
+            Message message;
+            while ((message = connection.receive()).type() != Type.AUTH_REQUEST);
+            var authRequest = (AuthRequest) message;
 
-            var login = AuthRequest.deserialize(in);
-
-            if (auth.authenticate(login.username(), login.password())) {
+            if (auth.authenticate(authRequest.username(), authRequest.password())) {
                 break;
             } else {
-                new AuthReply(false).serialize(out);
+                connection.send(new AuthReply(false));
             }
         }
-        new AuthReply(true).serialize(out);
+        connection.send(new AuthReply(true));
     }
 
-    private void job(DataInputStream in, DataOutputStream out) throws IOException, InterruptedException {
+    private Message runJob(JobRequest jobRequest) throws IOException, InterruptedException {
+        System.out.println("Running job");
         try {
-            new JobReplyOk(scheduler.addJob(JobRequest.deserialize(in).code())).serialize(out);
+            return new JobReplyOk(scheduler.addJob(jobRequest.code()));
         } catch (JobTooBigException e) {
-            new JobReplyError(0, "Not enough memory").serialize(out);
+            return new JobReplyError(0, "Not enough memory");
         } catch (JobFunctionException e) {
-            new JobReplyError(e.getCode(), e.getMessage()).serialize(out);
+            return new JobReplyError(e.getCode(), e.getMessage());
         }
     }
 }

@@ -1,9 +1,10 @@
 package client;
 
-import messages.*;
+import connection.messages.*;
+import connection.utils.Connection;
+import connection.utils.Message;
+import connection.utils.Type;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.Socket;
@@ -14,28 +15,27 @@ import java.util.Scanner;
 
 public class Client {
     public static void main(String[] args) {
-        try (var socket = new Socket("localhost", 1337);
-             var in = new DataInputStream(socket.getInputStream());
-             var out = new DataOutputStream(socket.getOutputStream())) {
-            authenticate(in, out);
+        try (var connection = new Connection(new Socket("localhost", 1337))) {
+            authenticate(connection);
 
             while (true) {
-                send(out);
+                send(connection);
                 Thread.startVirtualThread(() -> {
                     try {
-                        receive(in);
+                        receive(connection);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
                 });
             }
         } catch (IOException | NoSuchElementException e) {
-            // throw new RuntimeException(e);
             System.out.println("Connection ended.");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
-    private static void authenticate(DataInputStream in, DataOutputStream out) throws IOException, NoSuchElementException {
+    private static void authenticate(Connection connection) throws IOException, NoSuchElementException {
         var scanner = new Scanner(System.in);
 
         while (true) {
@@ -44,13 +44,12 @@ public class Client {
             System.out.print("Enter password: ");
             var password = scanner.nextLine();
 
-            new AuthRequest(username, password).serialize(out);
+            connection.send(new AuthRequest(username, password));
 
-            while (Type.deserialize(in) != Type.AUTH_REPLY) {
-                in.readAllBytes();
-            }
+            Message message;
+            while ((message = connection.receive()).type() != Type.AUTH_REPLY);
+            var authReply = (AuthReply) message;
 
-            var authReply = AuthReply.deserialize(in);
             if (authReply.success()) {
                 System.out.println("Login successful.");
                 break;
@@ -60,31 +59,30 @@ public class Client {
         }
     }
 
-    private static void send(DataOutputStream out) throws IOException {
+    private static void send(Connection connection) throws IOException {
         var scanner = new Scanner(System.in);
         var line = scanner.nextLine();
         var tokens = line.split(" ");
 
         switch (tokens[0]) {
             case "exec" -> {
-                var job = Files.readAllBytes(Path.of(tokens[1]));
-                new JobRequest(job).serialize(out);
+                connection.send(new JobRequest(Files.readAllBytes(Path.of(tokens[1]))));
             }
             default -> System.out.println("Unknown command");
         }
     }
 
-    private static void receive(DataInputStream in) throws IOException {
-        switch (Type.deserialize(in)) {
+    private static void receive(Connection connection) throws IOException {
+        var message = connection.receive();
+        switch (message.type()) {
             case JOB_REPLY_OK -> {
-                var jobReplyOk = JobReplyOk.deserialize(in);
-                var fileOut = "here.txt";
-                try (var fos = new FileOutputStream(fileOut)) {
-                    fos.write(jobReplyOk.output());
+                System.out.println("Job finished successfully.");
+                try (var fos = new FileOutputStream("out.txt")) {
+                    fos.write(((JobReplyOk) message).output());
                 }
             }
             case JOB_REPLY_ERROR -> {
-                var jobReplyError = JobReplyError.deserialize(in);
+                var jobReplyError = (JobReplyError) message;
                 System.out.println("Job failed.\n\tCode: " + jobReplyError.code() + "\n\tMessage: " + jobReplyError.message());
             }
             default -> System.out.println("Received unknown message type");
