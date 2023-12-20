@@ -6,10 +6,11 @@ import java.net.ServerSocket;
 public class Server {
     public static void main(String[] args) throws IOException {
         var auth = new Auth();
+        var scheduler = new Scheduler(Integer.parseInt(args[0]));
         try (var serverSocket = new ServerSocket(1337)) {
             while (true) {
                 var socket = serverSocket.accept();
-                var session = new Thread(new Session(socket, auth));
+                var session = new Thread(new Session(socket, auth, scheduler));
                 session.start();
             }
         }
