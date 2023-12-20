@@ -68,7 +68,7 @@ public class Session implements Runnable {
     private Message runJob(JobRequest jobRequest) throws InterruptedException {
         System.out.println("Running job");
         try {
-            return new JobReplyOk(scheduler.addJob(jobRequest.code()));
+            return new JobReplyOk(scheduler.addJob(jobRequest));
         } catch (JobTooBigException e) {
             return new JobReplyError(0, "Not enough memory");
         } catch (JobFunctionException e) {

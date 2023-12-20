@@ -7,13 +7,14 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-public record JobRequest(byte[] code) implements Message {
+public record JobRequest(byte[] code, int memory) implements Message {
 
     public static JobRequest deserialize(DataInputStream in) throws IOException {
         int length = in.readInt();
         byte[] data = new byte[length];
         in.readFully(data);
-        return new JobRequest(data);
+        int memory = in.readInt();
+        return new JobRequest(data, memory);
     }
 
     @Override
@@ -26,5 +27,6 @@ public record JobRequest(byte[] code) implements Message {
         Message.super.serialize(out);
         out.writeInt(code.length);
         out.write(code);
+        out.writeInt(memory);
     }
 }
