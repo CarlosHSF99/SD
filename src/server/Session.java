@@ -1,10 +1,7 @@
 package server;
 
 import concurrentUtils.BoundedBuffer;
-import connection.messages.AuthReply;
-import connection.messages.AuthRequest;
-import connection.messages.JobRequest;
-import connection.messages.WorkerHandshake;
+import connection.messages.*;
 import connection.multiplexer.Frame;
 import connection.multiplexer.TaggedConnection;
 import connection.utils.Type;
@@ -15,13 +12,13 @@ import java.net.Socket;
 public class Session implements Runnable {
     private final Socket socket;
     private final Auth auth;
-    private final MasterScheduler masterScheduler;
+    private final MasterScheduler scheduler;
     private final BoundedBuffer<Runnable> taskBuffer;
 
-    public Session(Socket socket, BoundedBuffer<Runnable> taskBuffer, Auth auth, MasterScheduler masterScheduler) {
+    public Session(Socket socket, BoundedBuffer<Runnable> taskBuffer, Auth auth, MasterScheduler scheduler) {
         this.socket = socket;
         this.auth = auth;
-        this.masterScheduler = masterScheduler;
+        this.scheduler = scheduler;
         this.taskBuffer = taskBuffer;
     }
 
@@ -34,7 +31,7 @@ public class Session implements Runnable {
 
             switch (handshake.type()) {
                 case CLIENT_HANDSHAKE -> clientService(connection);
-                case WORKER_HANDSHAKE -> masterScheduler.addWorker(connection, ((WorkerHandshake) handshake).memory());
+                case WORKER_HANDSHAKE -> scheduler.addWorker(connection, ((WorkerHandshake) handshake).memory());
                 default -> System.out.println("Received unknown handshake type");
             }
         } catch (IOException e) {
@@ -53,7 +50,8 @@ public class Session implements Runnable {
                 taskBuffer.put(() -> {
                     try {
                         switch (message.type()) {
-                            case JOB_REQUEST -> connection.send(frame.tag(), masterScheduler.runJob((JobRequest) message));
+                            case JOB_REQUEST -> connection.send(frame.tag(), scheduler.runJob((JobRequest) message));
+                            case STATUS_REQUEST -> connection.send(frame.tag(), new StatusReply(scheduler.availableMemory(), scheduler.pendingJobs()));
                             default -> System.out.println("Received unknown message type");
                         }
                     } catch (IOException | InterruptedException e) {
