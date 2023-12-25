@@ -18,6 +18,9 @@ public class Client {
     public static void main(String[] args) {
         try (var connection = new MultiplexedConnection(new Socket("localhost", 1337))) {
             new Thread(connection).start();
+
+            connection.send(new ClientHandshake());
+
             authenticate(connection);
 
             var scanner = new Scanner(System.in);

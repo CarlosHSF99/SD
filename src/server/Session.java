@@ -1,11 +1,13 @@
 package server;
 
 import concurrentUtils.BoundedBuffer;
-import connection.messages.*;
+import connection.messages.AuthReply;
+import connection.messages.AuthRequest;
+import connection.messages.JobRequest;
+import connection.messages.WorkerHandshake;
 import connection.multiplexer.Frame;
 import connection.multiplexer.TaggedConnection;
-import connection.utils.*;
-import sd23.JobFunctionException;
+import connection.utils.Type;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -13,19 +15,35 @@ import java.net.Socket;
 public class Session implements Runnable {
     private final Socket socket;
     private final Auth auth;
-    private final Scheduler scheduler;
+    private final MasterScheduler masterScheduler;
     private final BoundedBuffer<Runnable> taskBuffer;
 
-    public Session(Socket socket, BoundedBuffer<Runnable> taskBuffer, Auth auth, Scheduler scheduler) {
+    public Session(Socket socket, BoundedBuffer<Runnable> taskBuffer, Auth auth, MasterScheduler masterScheduler) {
         this.socket = socket;
         this.auth = auth;
-        this.scheduler = scheduler;
+        this.masterScheduler = masterScheduler;
         this.taskBuffer = taskBuffer;
     }
 
     @Override
     public void run() {
-        try (var connection = new TaggedConnection(socket)) {
+        try {
+            var connection = new TaggedConnection(socket);
+            var handshakeFrame = connection.receive();
+            var handshake = handshakeFrame.message();
+
+            switch (handshake.type()) {
+                case CLIENT_HANDSHAKE -> clientService(connection);
+                case WORKER_HANDSHAKE -> masterScheduler.addWorker(connection, ((WorkerHandshake) handshake).memory());
+                default -> System.out.println("Received unknown handshake type");
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void clientService(TaggedConnection taggedConnection) {
+        try (var connection = taggedConnection) {
             authenticate(connection);
 
             while (true) {
@@ -35,7 +53,7 @@ public class Session implements Runnable {
                 taskBuffer.put(() -> {
                     try {
                         switch (message.type()) {
-                            case JOB_REQUEST -> connection.send(frame.tag(), runJob((JobRequest) message));
+                            case JOB_REQUEST -> connection.send(frame.tag(), masterScheduler.runJob((JobRequest) message));
                             default -> System.out.println("Received unknown message type");
                         }
                     } catch (IOException | InterruptedException e) {
@@ -63,16 +81,5 @@ public class Session implements Runnable {
             }
         }
         connection.send(frame.tag(), new AuthReply(true));
-    }
-
-    private Message runJob(JobRequest jobRequest) throws InterruptedException {
-        System.out.println("Running job");
-        try {
-            return new JobReplyOk(scheduler.addJob(jobRequest));
-        } catch (JobTooBigException e) {
-            return new JobReplyError(0, "Not enough memory");
-        } catch (JobFunctionException e) {
-            return new JobReplyError(e.getCode(), e.getMessage());
-        }
     }
 }
