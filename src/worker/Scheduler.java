@@ -1,7 +1,9 @@
-package server;
+package worker;
 
+import connection.messages.JobRequest;
 import sd23.JobFunction;
 import sd23.JobFunctionException;
+import server.JobTooBigException;
 
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -20,30 +22,30 @@ public class Scheduler {
         this.memoryCapacity = memoryCapacity;
     }
 
-    public byte[] addJob(byte[] job) throws InterruptedException, JobFunctionException, JobTooBigException {
-        if (job.length > memoryCapacity) {
-            throw new JobTooBigException();
-        }
-
+    public byte[] addJob(JobRequest job) throws InterruptedException, JobFunctionException, JobTooBigException {
         lock.lock();
         try {
+            if (job.memory() > memoryCapacity) {
+                throw new JobTooBigException();
+            }
+
             var ticket = nextTicket++;
-            while (memoryInUse + job.length > memoryCapacity || ticket > turn) {
+            while (memoryInUse + job.memory() > memoryCapacity || ticket > turn) {
                 cond.await();
             }
             turn++;
-            memoryInUse += job.length;
+            memoryInUse += job.memory();
             pendingJobs++;
         } finally {
             lock.unlock();
         }
 
         try {
-            return JobFunction.execute(job);
+            return JobFunction.execute(job.code());
         } finally {
             lock.lock();
             try {
-                memoryInUse -= job.length;
+                memoryInUse -= job.memory();
                 pendingJobs--;
                 cond.signalAll();
             } finally {

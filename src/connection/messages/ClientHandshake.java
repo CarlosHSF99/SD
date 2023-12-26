@@ -7,15 +7,15 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-public record StatusRequest() implements Message {
+public record ClientHandshake() implements Message {
 
-    public static StatusRequest deserialize(DataInputStream in) throws IOException {
-        return new StatusRequest();
+    public static ClientHandshake deserialize(DataInputStream in) throws IOException {
+        return new ClientHandshake();
     }
 
     @Override
     public Type type() {
-        return Type.STATUS_REQUEST;
+        return Type.CLIENT_HANDSHAKE;
     }
 
     @Override

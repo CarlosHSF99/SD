@@ -48,6 +48,18 @@ public enum Type implements Serializable {
         public StatusReply deserializeMessage(DataInputStream in) throws IOException {
             return StatusReply.deserialize(in);
         }
+    },
+    WORKER_HANDSHAKE {
+        @Override
+        public WorkerHandshake deserializeMessage(DataInputStream in) throws IOException {
+            return WorkerHandshake.deserialize(in);
+        }
+    },
+    CLIENT_HANDSHAKE {
+        @Override
+        public ClientHandshake deserializeMessage(DataInputStream in) throws IOException {
+            return ClientHandshake.deserialize(in);
+        }
     };
 
     public void serialize(DataOutputStream out) throws IOException {

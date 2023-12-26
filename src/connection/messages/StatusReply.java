@@ -7,7 +7,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-public record StatusReply(int availableMemory, int pendingTasks) implements Message {
+public record StatusReply(int availableMemory, int pendingJobs) implements Message {
 
     public static StatusReply deserialize(DataInputStream in) throws IOException {
         int availableMemory = in.readInt();
@@ -22,7 +22,8 @@ public record StatusReply(int availableMemory, int pendingTasks) implements Mess
 
     @Override
     public void serialize(DataOutputStream out) throws IOException {
+        Message.super.serialize(out);
         out.writeInt(availableMemory);
-        out.writeInt(pendingTasks);
+        out.writeInt(pendingJobs);
     }
 }

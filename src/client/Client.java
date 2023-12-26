@@ -1,7 +1,7 @@
 package client;
 
 import connection.messages.*;
-import connection.utils.Connection;
+import connection.multiplexer.MultiplexedConnection;
 import connection.utils.Message;
 import connection.utils.Type;
 
@@ -14,28 +14,35 @@ import java.util.NoSuchElementException;
 import java.util.Scanner;
 
 public class Client {
+
     public static void main(String[] args) {
-        try (var connection = new Connection(new Socket("localhost", 1337))) {
+        try (var connection = new MultiplexedConnection(new Socket("localhost", 1337))) {
+            new Thread(connection).start();
+
+            connection.send(new ClientHandshake());
+
             authenticate(connection);
 
+            var scanner = new Scanner(System.in);
             while (true) {
-                send(connection);
-                Thread.startVirtualThread(() -> {
+                var line = scanner.nextLine();
+                new Thread(() -> {
                     try {
-                        receive(connection);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
+                        var tag = send(connection, line);
+                        handleMessage(connection.receive(tag));
+                    } catch (InterruptedException | IOException e) {
+                        System.out.println("Error receiving message");
+                    } catch (IllegalArgumentException ignored) {
                     }
-                });
+                }).start();
             }
-        } catch (IOException | NoSuchElementException e) {
-            System.out.println("Connection ended.");
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+        } catch (IOException | NoSuchElementException | InterruptedException e) {
+            var exceptionMessage = e.getMessage();
+            System.out.println("Connection ended" + (exceptionMessage != null ? " with error: " + exceptionMessage : "."));
         }
     }
 
-    private static void authenticate(Connection connection) throws IOException, NoSuchElementException {
+    private static void authenticate(MultiplexedConnection connection) throws IOException, NoSuchElementException, InterruptedException {
         var scanner = new Scanner(System.in);
 
         while (true) {
@@ -44,10 +51,10 @@ public class Client {
             System.out.print("Enter password: ");
             var password = scanner.nextLine();
 
-            connection.send(new AuthRequest(username, password));
+            var tag = connection.send(new AuthRequest(username, password));
 
             Message message;
-            while ((message = connection.receive()).type() != Type.AUTH_REPLY);
+            while ((message = connection.receive(tag)).type() != Type.AUTH_REPLY) ;
             var authReply = (AuthReply) message;
 
             if (authReply.success()) {
@@ -59,31 +66,40 @@ public class Client {
         }
     }
 
-    private static void send(Connection connection) throws IOException {
-        var scanner = new Scanner(System.in);
-        var line = scanner.nextLine();
+    private static int send(MultiplexedConnection connection, String line) throws IOException, IllegalArgumentException {
         var tokens = line.split(" ");
 
         switch (tokens[0]) {
             case "exec" -> {
-                connection.send(new JobRequest(Files.readAllBytes(Path.of(tokens[1]))));
+                return connection.send(new JobRequest(Files.readAllBytes(Path.of(tokens[1])), Integer.parseInt(tokens[2])));
             }
-            default -> System.out.println("Unknown command");
+            case "status" -> {
+                return connection.send(new StatusRequest());
+            }
+            default -> {
+                System.out.println("Unknown command");
+                throw new IllegalArgumentException(tokens[0]);
+            }
         }
     }
 
-    private static void receive(Connection connection) throws IOException {
-        var message = connection.receive();
+    private static void handleMessage(Message message) {
         switch (message.type()) {
             case JOB_REPLY_OK -> {
                 System.out.println("Job finished successfully.");
                 try (var fos = new FileOutputStream("out.txt")) {
                     fos.write(((JobReplyOk) message).output());
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
             }
             case JOB_REPLY_ERROR -> {
                 var jobReplyError = (JobReplyError) message;
                 System.out.println("Job failed.\n\tCode: " + jobReplyError.code() + "\n\tMessage: " + jobReplyError.message());
+            }
+            case STATUS_REPLY -> {
+                var statusReply = (StatusReply) message;
+                System.out.println("Status:\n\tAvailable memory: " + statusReply.availableMemory() + "\n\tNumber of pending tasks: " + statusReply.pendingJobs());
             }
             default -> System.out.println("Received unknown message type");
         }
