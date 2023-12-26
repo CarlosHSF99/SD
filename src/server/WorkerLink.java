@@ -1,19 +1,20 @@
 package server;
 
 import connection.messages.JobRequest;
-import connection.multiplexer.MultiplexedConnection;
 import connection.multiplexer.TaggedConnection;
+import connection.multiplexer.WorkerMultiplexedConnection;
 import connection.utils.Message;
 
 import java.io.IOException;
 
 public class WorkerLink implements Runnable, AutoCloseable, Comparable<WorkerLink> {
-    private final MultiplexedConnection connection;
+    private final WorkerMultiplexedConnection connection;
     private final int totalMemory;
     private int memoryInUse = 0;
+    private int pendingJobs = 0;
 
-    public WorkerLink(TaggedConnection connection, int totalMemory) {
-        this.connection = new MultiplexedConnection(connection);
+    public WorkerLink(TaggedConnection connection, int totalMemory, WorkerPool workerPool) {
+        this.connection = new WorkerMultiplexedConnection(connection, workerPool, this);
         this.totalMemory = totalMemory;
     }
 
@@ -23,7 +24,12 @@ public class WorkerLink implements Runnable, AutoCloseable, Comparable<WorkerLin
     }
 
     public Message runJob(JobRequest jobRequest) throws IOException, InterruptedException {
-        return connection.receive(connection.send(jobRequest));
+        try {
+            pendingJobs++;
+            return connection.receive(connection.send(jobRequest));
+        } finally {
+            pendingJobs--;
+        }
     }
 
     public void allocMemory(int memory) {
@@ -40,6 +46,10 @@ public class WorkerLink implements Runnable, AutoCloseable, Comparable<WorkerLin
 
     public int availableMemory() {
         return totalMemory - memoryInUse;
+    }
+
+    public int pendingJobs() {
+        return pendingJobs;
     }
 
     @Override

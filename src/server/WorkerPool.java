@@ -31,7 +31,7 @@ public class WorkerPool {
         }
     }
 
-    public WorkerLink getWorker(int memory) throws NoSuitableWorkerException {
+    public WorkerLink selectWorker(int memory) throws NoSuitableWorkerException {
         lock.lock();
         try {
             return workerLinks.stream()
@@ -49,12 +49,30 @@ public class WorkerPool {
         }
     }
 
-    public void update(WorkerLink workerLink, int memory) {
+    public void updateWorker(WorkerLink workerLink, int memory) {
         lock.lock();
         try {
             workerLinks.remove(workerLink);
             workerLink.freeMemory(memory);
             workerLinks.add(workerLink);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public int availableMemory() {
+        lock.lock();
+        try {
+            return workerLinks.stream().mapToInt(WorkerLink::availableMemory).sum();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public int pendingJobs() {
+        lock.lock();
+        try {
+            return workerLinks.stream().mapToInt(WorkerLink::pendingJobs).sum();
         } finally {
             lock.unlock();
         }

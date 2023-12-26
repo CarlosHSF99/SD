@@ -11,12 +11,12 @@ import java.util.concurrent.locks.ReentrantLock;
 public class MessageMultiplexer {
     private final Map<Integer, MessageBuffer> map = new HashMap<>();
     private final Lock lock = new ReentrantLock();
-    private int firstValidTag = 0;
+    private IOException ioException = null;
 
     public void put(Frame frame) {
         lock.lock();
         try {
-            if (frame.tag() >= firstValidTag) {
+            if (ioException == null) {
                 map.computeIfAbsent(frame.tag(), t -> new MessageBuffer(lock.newCondition())).put(frame.message());
             }
         } finally {
@@ -27,8 +27,8 @@ public class MessageMultiplexer {
     public Message get(int tag) throws IOException, InterruptedException {
         lock.lock();
         try {
-            if (tag < firstValidTag) {
-                throw new IOException();
+            if (ioException != null) {
+                throw ioException;
             }
             return map.computeIfAbsent(tag, t -> new MessageBuffer(lock.newCondition())).get();
         } finally {
@@ -37,11 +37,11 @@ public class MessageMultiplexer {
         }
     }
 
-    public void killUntil(int tag) {
+    public void kill(IOException ioe) {
         lock.lock();
         try {
-            firstValidTag = tag;
-            map.values().forEach(MessageBuffer::kill);
+            ioException = ioe;
+            map.values().forEach(messageBuffer -> messageBuffer.kill(ioe));
         } finally {
             lock.unlock();
         }

@@ -26,7 +26,7 @@ public class Client {
             var scanner = new Scanner(System.in);
             while (true) {
                 var line = scanner.nextLine();
-                Thread.startVirtualThread(() -> {
+                new Thread(() -> {
                     try {
                         var tag = send(connection, line);
                         handleMessage(connection.receive(tag));
@@ -34,7 +34,7 @@ public class Client {
                         System.out.println("Error receiving message");
                     } catch (IllegalArgumentException ignored) {
                     }
-                });
+                }).start();
             }
         } catch (IOException | NoSuchElementException | InterruptedException e) {
             var exceptionMessage = e.getMessage();

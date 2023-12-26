@@ -7,8 +7,8 @@ import java.io.IOException;
 import java.net.Socket;
 
 public class MultiplexedConnection implements Runnable, AutoCloseable {
-    private final TaggedConnection connection;
-    private final MessageMultiplexer messageMultiplexer = new MessageMultiplexer();
+    protected final TaggedConnection connection;
+    protected final MessageMultiplexer messageMultiplexer = new MessageMultiplexer();
     private final ConcurrentCounter nextTag = new ConcurrentCounter();
 
     public MultiplexedConnection(TaggedConnection connection) {
@@ -23,8 +23,9 @@ public class MultiplexedConnection implements Runnable, AutoCloseable {
         while (true) {
             try {
                 messageMultiplexer.put(connection.receive());
-            } catch (IOException e) {
-                messageMultiplexer.killUntil(nextTag.get());
+            } catch (IOException ioe) {
+                messageMultiplexer.kill(ioe);
+                break;
             }
         }
     }

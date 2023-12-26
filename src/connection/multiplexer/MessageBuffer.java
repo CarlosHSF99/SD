@@ -8,7 +8,7 @@ import java.util.concurrent.locks.Condition;
 public class MessageBuffer {
     private final Condition connection;
     private Message messageBuffer = null;
-    private boolean error = false;
+    private IOException ioException = null;
 
     public MessageBuffer(Condition connection) {
         this.connection = connection;
@@ -22,16 +22,16 @@ public class MessageBuffer {
     public Message get() throws IOException, InterruptedException {
         while (messageBuffer == null) {
             connection.await();
-            if (error) {
-                throw new IOException();
+            if (ioException != null) {
+                throw ioException;
             }
         }
 
         return messageBuffer;
     }
 
-    public void kill() {
-        error = true;
+    public void kill(IOException ioe) {
+        this.ioException = ioe;
         connection.signal();
     }
 }
