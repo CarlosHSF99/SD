@@ -4,7 +4,6 @@ import concurrentUtils.BoundedBuffer;
 import connection.messages.*;
 import connection.multiplexer.Frame;
 import connection.multiplexer.TaggedConnection;
-import connection.utils.Type;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -30,7 +29,7 @@ public class Session implements Runnable {
             var handshake = handshakeFrame.message();
 
             switch (handshake.type()) {
-                case CLIENT_HANDSHAKE -> clientService(connection);
+                case CLIENT_HANDSHAKE -> clientService(connection, handshakeFrame);
                 case WORKER_HANDSHAKE -> scheduler.addWorker(connection, ((WorkerHandshake) handshake).memory());
                 default -> System.out.println("Received unknown handshake type");
             }
@@ -39,9 +38,23 @@ public class Session implements Runnable {
         }
     }
 
-    private void clientService(TaggedConnection taggedConnection) {
+    private void clientService(TaggedConnection taggedConnection, Frame handshakeFrame) {
+        var handshake = (ClientHandshake) handshakeFrame.message();
+        var username = handshake.username();
+        var password = handshake.password();
+
+        System.out.println("User " + username + " connected");
+
         try (var connection = taggedConnection) {
-            authenticate(connection);
+
+            if (auth.authenticate(username, password)) {
+                System.out.println("User " + username + " authenticated");
+                connection.send(handshakeFrame.tag(), new AuthReply(true));
+            } else {
+                System.out.println("User " + username + " authentication failed");
+                connection.send(handshakeFrame.tag(), new AuthReply(false));
+                return;
+            }
 
             while (true) {
                 var frame = connection.receive();
@@ -61,23 +74,11 @@ public class Session implements Runnable {
                 });
             }
         } catch (IOException | InterruptedException e) {
-            var exceptionMessage = e.getMessage();
-            System.out.println("Connection ended" + (exceptionMessage != null ? " with error: " + exceptionMessage : "."));
-        }
-    }
-
-    private void authenticate(TaggedConnection connection) throws IOException {
-        Frame frame;
-        while (true) {
-            while ((frame = connection.receive()).message().type() != Type.AUTH_REQUEST) ;
-            var authRequest = (AuthRequest) frame.message();
-
-            if (auth.authenticate(authRequest.username(), authRequest.password())) {
-                break;
+            if (e.getMessage() != null) {
+                System.out.println("User " + username + "'s connection ended with error: " + e.getMessage());
             } else {
-                connection.send(frame.tag(), new AuthReply(false));
+                System.out.println("User " + username + " disconnected");
             }
         }
-        connection.send(frame.tag(), new AuthReply(true));
     }
 }
