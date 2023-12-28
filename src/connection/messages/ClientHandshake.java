@@ -7,10 +7,12 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-public record ClientHandshake() implements Message {
+public record ClientHandshake(String username, String password) implements Message {
 
     public static ClientHandshake deserialize(DataInputStream in) throws IOException {
-        return new ClientHandshake();
+        String username = in.readUTF();
+        String password = in.readUTF();
+        return new ClientHandshake(username, password);
     }
 
     @Override
@@ -21,5 +23,7 @@ public record ClientHandshake() implements Message {
     @Override
     public void serialize(DataOutputStream out) throws IOException {
         Message.super.serialize(out);
+        out.writeUTF(username);
+        out.writeUTF(password);
     }
 }
