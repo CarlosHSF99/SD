@@ -17,26 +17,29 @@ public class Main {
             System.out.print("Enter password: ");
             String password = scanner.nextLine();
             try (var faas = new FaaS(username, password)) {
+                faas.start();
                 while (true) {
                     var tokens = scanner.nextLine().split(" ");
                     new Thread(() -> {
                         try {
                             switch (tokens[0]) {
                                 case "exec" -> {
+                                    var jobPath = tokens[1];
+                                    var outPath = jobPath + ".out";
+                                    var job = Files.readAllBytes(Path.of(jobPath));
+                                    var memory = Integer.parseInt(tokens[2]);
                                     try {
-                                        var filePath = tokens[1];
-                                        var job = Files.readAllBytes(Path.of(filePath));
-                                        var memory = Integer.parseInt(tokens[2]);
                                         var output = faas.executeJob(job, memory);
-                                        System.out.println("Job finished.");
-                                        try (var fos = new FileOutputStream(filePath + ".out")) {
-                                            System.out.println("Writing output to file");
+                                        System.out.println("Job " + jobPath + " finished.");
+                                        try (var fos = new FileOutputStream(outPath)) {
                                             fos.write(output);
-                                        } catch (IOException e) {
-                                            System.out.println("Error writing output to file");
+                                            System.out.println("Job " + jobPath + " output written to " + outPath);
+                                        } catch (IOException ioe) {
+                                            var exceptionMessage = ioe.getMessage();
+                                            System.out.println("Error writing " + jobPath + " output to file" + (exceptionMessage != null ? ": " + exceptionMessage : ""));
                                         }
                                     } catch (JobFailedException jfe) {
-                                        System.out.println("Job failed.\n\tCode: " + jfe.code() + "\n\tMessage: " + jfe.message());
+                                        System.out.println("Job " + jobPath + " failed:\n\terror code: " + jfe.code() + "\n\terror message: " + jfe.message());
                                     }
                                 }
                                 case "status" -> {
