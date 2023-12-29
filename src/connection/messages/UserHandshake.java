@@ -17,7 +17,7 @@ public record UserHandshake(String username, String password) implements Message
 
     @Override
     public Type type() {
-        return Type.CLIENT_HANDSHAKE;
+        return Type.USER_HANDSHAKE;
     }
 
     @Override

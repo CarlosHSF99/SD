@@ -55,7 +55,7 @@ public enum Type implements Serializable {
             return WorkerHandshake.deserialize(in);
         }
     },
-    CLIENT_HANDSHAKE {
+    USER_HANDSHAKE {
         @Override
         public UserHandshake deserializePayload(DataInputStream in) throws IOException {
             return UserHandshake.deserialize(in);
