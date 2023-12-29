@@ -22,7 +22,6 @@ public record JobReplyError(int code, String message) implements Message {
 
     @Override
     public void serialize(DataOutputStream out) throws IOException {
-        Message.super.serialize(out);
         out.writeInt(code);
         out.writeUTF(message);
     }

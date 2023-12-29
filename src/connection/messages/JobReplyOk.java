@@ -9,6 +9,14 @@ import java.io.IOException;
 
 public record JobReplyOk(byte[] output) implements Message {
 
+    public JobReplyOk(byte[] output) {
+        this.output = output.clone();
+    }
+
+    public byte[] output() {
+        return output.clone();
+    }
+
     public static JobReplyOk deserialize(DataInputStream in) throws IOException {
         int outputLength = in.readInt();
         byte[] output = new byte[outputLength];
@@ -23,7 +31,6 @@ public record JobReplyOk(byte[] output) implements Message {
 
     @Override
     public void serialize(DataOutputStream out) throws IOException {
-        Message.super.serialize(out);
         out.writeInt(output.length);
         out.write(output);
     }
