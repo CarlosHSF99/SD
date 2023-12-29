@@ -26,11 +26,10 @@ public class Session implements Runnable {
         try {
             var connection = new TaggedConnection(socket);
             var handshakeFrame = connection.receive();
-            var handshake = handshakeFrame.message();
 
-            switch (handshake.type()) {
-                case CLIENT_HANDSHAKE -> clientService(connection, handshakeFrame);
-                case WORKER_HANDSHAKE -> scheduler.addWorker(connection, ((WorkerHandshake) handshake).memory());
+            switch (handshakeFrame.message()) {
+                case UserHandshake __ -> userService(connection, handshakeFrame);
+                case WorkerHandshake workerHandshake -> scheduler.addWorker(connection, workerHandshake.memory());
                 default -> System.out.println("Received unknown handshake type");
             }
         } catch (IOException e) {
@@ -38,8 +37,8 @@ public class Session implements Runnable {
         }
     }
 
-    private void clientService(TaggedConnection taggedConnection, Frame handshakeFrame) {
-        var handshake = (ClientHandshake) handshakeFrame.message();
+    private void userService(TaggedConnection taggedConnection, Frame handshakeFrame) {
+        var handshake = (UserHandshake) handshakeFrame.message();
         var username = handshake.username();
         var password = handshake.password();
 
@@ -62,9 +61,9 @@ public class Session implements Runnable {
 
                 taskBuffer.put(() -> {
                     try {
-                        switch (message.type()) {
-                            case JOB_REQUEST -> connection.send(frame.tag(), scheduler.runJob((JobRequest) message));
-                            case STATUS_REQUEST -> connection.send(frame.tag(), new StatusReply(scheduler.availableMemory(), scheduler.pendingJobs()));
+                        switch (message) {
+                            case JobRequest jobRequest -> connection.send(frame.tag(), scheduler.runJob(jobRequest));
+                            case StatusRequest __ -> connection.send(frame.tag(), new StatusReply(scheduler.availableMemory(), scheduler.pendingJobs()));
                             default -> System.out.println("Received unknown message type");
                         }
                     } catch (IOException | InterruptedException e) {

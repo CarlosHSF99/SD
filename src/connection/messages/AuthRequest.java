@@ -22,7 +22,6 @@ public record AuthRequest(String username, String password) implements Message {
 
     @Override
     public void serialize(DataOutputStream out) throws IOException {
-        Message.super.serialize(out);
         out.writeUTF(username);
         out.writeUTF(password);
     }

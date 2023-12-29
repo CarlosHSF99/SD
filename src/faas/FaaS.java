@@ -12,7 +12,7 @@ public class FaaS implements AutoCloseable {
 
     public FaaS(String username, String password) throws IOException, AuthFailedException {
         var taggedConnection = new TaggedConnection(new Socket("localhost", 1337));
-        taggedConnection.send(0, new ClientHandshake(username, password));
+        taggedConnection.send(0, new UserHandshake(username, password));
         if (!((AuthReply) taggedConnection.receive().message()).success()) {
             throw new AuthFailedException();
         }

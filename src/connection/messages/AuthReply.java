@@ -21,7 +21,6 @@ public record AuthReply(boolean success) implements Message {
 
     @Override
     public void serialize(DataOutputStream out) throws IOException {
-        Message.super.serialize(out);
         out.writeBoolean(success);
     }
 }

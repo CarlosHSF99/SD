@@ -20,6 +20,5 @@ public record StatusRequest() implements Message {
 
     @Override
     public void serialize(DataOutputStream out) throws IOException {
-        Message.super.serialize(out);
     }
 }

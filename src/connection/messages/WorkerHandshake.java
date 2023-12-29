@@ -21,7 +21,6 @@ public record WorkerHandshake(int memory) implements Message {
 
     @Override
     public void serialize(DataOutputStream out) throws IOException {
-        Message.super.serialize(out);
         out.writeInt(memory);
     }
 }
