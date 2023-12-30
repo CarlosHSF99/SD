@@ -1,8 +1,8 @@
 package faas;
 
-import connection.messages.*;
-import connection.multiplexer.MultiplexedConnection;
-import connection.multiplexer.TaggedConnection;
+import messages.*;
+import connectionUtils.MultiplexedConnection;
+import connectionUtils.TaggedConnection;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -19,7 +19,7 @@ public class FaaS implements AutoCloseable {
         this.connection = new MultiplexedConnection(taggedConnection);
     }
 
-    public void start() throws AuthFailedException, IOException, InterruptedException {
+    public void start() {
         new Thread(connection).start();
     }
 
@@ -36,7 +36,7 @@ public class FaaS implements AutoCloseable {
     public Status getStatus() throws IOException, InterruptedException {
         var tag = connection.send(new StatusRequest());
         StatusReply status = (StatusReply) connection.receive(tag);
-        return new Status(status.availableMemory(), status.pendingJobs());
+        return new Status(status.availableMemory(), status.maxJobMemory(), status.pendingJobs());
     }
 
     @Override

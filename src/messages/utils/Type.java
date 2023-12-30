@@ -1,6 +1,6 @@
-package connection.utils;
+package messages.utils;
 
-import connection.messages.*;
+import messages.*;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;

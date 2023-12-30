@@ -44,7 +44,7 @@ public class Main {
                                 }
                                 case "status" -> {
                                     var status = faas.getStatus();
-                                    System.out.println("Status:\n\tAvailable memory: " + status.availableMemory() + "\n\tNumber of pending tasks: " + status.pendingJobs());
+                                    System.out.println("Status:\n\tAvailable memory: " + status.availableMemory() + "\n\tMaximum job memory allowed: " + status.maxJobMemory() + "\n\tNumber of pending tasks: " + status.pendingJobs());
                                 }
                                 default -> System.out.println("Unknown command");
                             }
@@ -53,7 +53,7 @@ public class Main {
                         }
                     }).start();
                 }
-            } catch (IOException | InterruptedException e) {
+            } catch (IOException e) {
                 var exceptionMessage = e.getMessage();
                 System.out.println("Connection ended" + (exceptionMessage != null ? " with error: " + exceptionMessage : "."));
             } catch (AuthFailedException e) {

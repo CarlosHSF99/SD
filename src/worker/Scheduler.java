@@ -1,6 +1,6 @@
 package worker;
 
-import connection.messages.JobRequest;
+import messages.JobRequest;
 import sd23.JobFunction;
 import sd23.JobFunctionException;
 import server.JobTooBigException;

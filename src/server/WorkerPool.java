@@ -77,4 +77,13 @@ public class WorkerPool {
             lock.unlock();
         }
     }
+
+    public int maxJobMemory() {
+        lock.lock();
+        try {
+            return workerLinks.stream().map(WorkerLink::totalMemory).max(Integer::compareTo).orElse(0);
+        } finally {
+            lock.unlock();
+        }
+    }
 }

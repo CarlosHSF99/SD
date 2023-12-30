@@ -1,5 +1,7 @@
-package connection.multiplexer;
+package server;
 
+import connectionUtils.MultiplexedConnection;
+import connectionUtils.TaggedConnection;
 import server.WorkerLink;
 import server.WorkerPool;
 
@@ -21,6 +23,7 @@ public class WorkerMultiplexedConnection extends MultiplexedConnection {
             try {
                 messageMultiplexer.put(connection.receive());
             } catch (IOException e) {
+                System.out.println("Worker disconnected");
                 messageMultiplexer.kill(e);
                 workerPool.remove(workerLink);
                 break;

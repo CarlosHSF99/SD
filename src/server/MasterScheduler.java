@@ -1,9 +1,9 @@
 package server;
 
-import connection.messages.JobReplyError;
-import connection.messages.JobRequest;
-import connection.multiplexer.TaggedConnection;
-import connection.utils.Message;
+import messages.JobReplyError;
+import messages.JobRequest;
+import connectionUtils.TaggedConnection;
+import messages.utils.Message;
 
 import java.io.IOException;
 
@@ -34,10 +34,14 @@ public class MasterScheduler {
     }
 
     public int availableMemory() {
-        return workerPool.availableMemory();
+        return Math.max(workerPool.availableMemory(), 0);
     }
 
     public int pendingJobs() {
         return workerPool.pendingJobs();
+    }
+
+    public int maxJobMemory() {
+        return workerPool.maxJobMemory();
     }
 }

@@ -1,7 +1,7 @@
-package connection.multiplexer;
+package connectionUtils;
 
 import concurrentUtils.ConcurrentCounter;
-import connection.utils.Message;
+import messages.utils.Message;
 
 import java.io.IOException;
 import java.net.Socket;

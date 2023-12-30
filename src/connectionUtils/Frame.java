@@ -1,7 +1,7 @@
-package connection.multiplexer;
+package connectionUtils;
 
-import connection.utils.Message;
-import connection.utils.Serializable;
+import messages.utils.Message;
+import messages.utils.Serializable;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;

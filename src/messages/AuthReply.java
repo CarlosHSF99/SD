@@ -1,7 +1,7 @@
-package connection.messages;
+package messages;
 
-import connection.utils.Message;
-import connection.utils.Type;
+import messages.utils.Message;
+import messages.utils.Type;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
