@@ -10,7 +10,7 @@
     <orderEntry type="module-library" exported="">
       <library>
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/src/server/sd23.jar!/" />
+          <root url="jar://$MODULE_DIR$/src/worker/sd23.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />

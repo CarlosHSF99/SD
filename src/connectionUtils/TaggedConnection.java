@@ -1,6 +1,6 @@
-package connection.multiplexer;
+package connectionUtils;
 
-import connection.utils.Message;
+import messages.utils.Message;
 
 import java.io.*;
 import java.net.Socket;

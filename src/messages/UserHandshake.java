@@ -1,23 +1,23 @@
-package connection.messages;
+package messages;
 
-import connection.utils.Message;
-import connection.utils.Type;
+import messages.utils.Message;
+import messages.utils.Type;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
-public record AuthRequest(String username, String password) implements Message {
+public record UserHandshake(String username, String password) implements Message {
 
-    public static AuthRequest deserialize(DataInputStream in) throws IOException {
+    public static UserHandshake deserialize(DataInputStream in) throws IOException {
         String username = in.readUTF();
         String password = in.readUTF();
-        return new AuthRequest(username, password);
+        return new UserHandshake(username, password);
     }
 
     @Override
     public Type type() {
-        return Type.AUTH_REQUEST;
+        return Type.USER_HANDSHAKE;
     }
 
     @Override

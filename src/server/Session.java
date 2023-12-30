@@ -1,9 +1,9 @@
 package server;
 
-import concurrentUtils.BoundedBuffer;
-import connection.messages.*;
-import connection.multiplexer.Frame;
-import connection.multiplexer.TaggedConnection;
+import concurrentUtils.ThreadPoolService;
+import messages.*;
+import connectionUtils.Frame;
+import connectionUtils.TaggedConnection;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -12,13 +12,13 @@ public class Session implements Runnable {
     private final Socket socket;
     private final Auth auth;
     private final MasterScheduler scheduler;
-    private final BoundedBuffer<Runnable> taskBuffer;
+    private final ThreadPoolService threadPool;
 
-    public Session(Socket socket, BoundedBuffer<Runnable> taskBuffer, Auth auth, MasterScheduler scheduler) {
+    public Session(Socket socket, ThreadPoolService threadPool, Auth auth, MasterScheduler scheduler) {
         this.socket = socket;
         this.auth = auth;
         this.scheduler = scheduler;
-        this.taskBuffer = taskBuffer;
+        this.threadPool = threadPool;
     }
 
     @Override
@@ -29,7 +29,7 @@ public class Session implements Runnable {
 
             switch (handshakeFrame.message()) {
                 case UserHandshake __ -> userService(connection, handshakeFrame);
-                case WorkerHandshake workerHandshake -> scheduler.addWorker(connection, workerHandshake.memory());
+                case WorkerHandshake workerHandshake -> workerService(connection, workerHandshake);
                 default -> System.out.println("Received unknown handshake type");
             }
         } catch (IOException e) {
@@ -59,11 +59,11 @@ public class Session implements Runnable {
                 var frame = connection.receive();
                 var message = frame.message();
 
-                taskBuffer.put(() -> {
+                threadPool.submit(() -> {
                     try {
                         switch (message) {
                             case JobRequest jobRequest -> connection.send(frame.tag(), scheduler.runJob(jobRequest));
-                            case StatusRequest __ -> connection.send(frame.tag(), new StatusReply(scheduler.availableMemory(), scheduler.pendingJobs()));
+                            case StatusRequest __ -> connection.send(frame.tag(), new StatusReply(scheduler.availableMemory(), scheduler.maxJobMemory(), scheduler.pendingJobs()));
                             default -> System.out.println("Received unknown message type");
                         }
                     } catch (IOException | InterruptedException e) {
@@ -72,12 +72,17 @@ public class Session implements Runnable {
                     }
                 });
             }
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException e) {
             if (e.getMessage() != null) {
                 System.out.println("User " + username + "'s connection ended with error: " + e.getMessage());
             } else {
                 System.out.println("User " + username + " disconnected");
             }
         }
+    }
+
+    private void workerService(TaggedConnection connection, WorkerHandshake workerHandshake) {
+        System.out.println("Worker connected");
+        scheduler.addWorker(connection, workerHandshake.memory());
     }
 }

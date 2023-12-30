@@ -1,9 +1,8 @@
 package server;
 
-import connection.messages.JobRequest;
-import connection.multiplexer.TaggedConnection;
-import connection.multiplexer.WorkerMultiplexedConnection;
-import connection.utils.Message;
+import messages.JobRequest;
+import connectionUtils.TaggedConnection;
+import messages.utils.Message;
 
 import java.io.IOException;
 

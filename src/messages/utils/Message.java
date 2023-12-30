@@ -1,4 +1,4 @@
-package connection.utils;
+package messages.utils;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;

@@ -1,4 +1,4 @@
-package connection.utils;
+package messages.utils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
